@@ -1,5 +1,9 @@
 var PRICE = 9.99;
 var LOAD_NUM = 10;
+var pusher = new Pusher('9f8774568256f500cd93', {
+  cluster: 'eu',
+  enctypted: true
+});
 
 new Vue({
   el: '#app',
@@ -11,7 +15,8 @@ new Vue({
     newSearch: 'anime',
     lastSearch: '',
     loading: false,
-    price: PRICE
+    price: PRICE,
+    pusherUpdate: false
   },
   methods: {
     appendItems: function () {
@@ -81,6 +86,18 @@ new Vue({
       return this.items.length === this.results.length && this.results.length > 0
     }
   },
+  watch: {
+    cart: {
+      handler: function (val) {
+        if(!this.pusherUpdate){
+          this.$http.post('/cart_update', val);
+        } else {
+          this.pusherUpdate = false;
+        }
+      },
+      deep: true
+    }
+  },
   mounted: function () {
     this.onSubmit();
     var vueInstance = this;
@@ -89,6 +106,15 @@ new Vue({
     watcher.enterViewport(function () {
       vueInstance.appendItems();
     });
+    var channel = pusher.subscribe('cart');
+    channel.bind('update', function (data) {
+      vueInstance.pusherUpdate = true;
+      vueInstance.cart = data;
+      vueInstance.total = 0;
+      for (var i = 0; i < vueInstance.cart.length; i++){
+        vueInstance.total += PRICE * vueInstance.cart[i].qty;
+      }
+    })
   }
 });
 
